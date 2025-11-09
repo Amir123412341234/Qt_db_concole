@@ -8,15 +8,6 @@
 #include "student.h"
 #include "teacher.h"
 using namespace std;
-/*
-      "CREATE TABLE IF NOT EXISTS student ("
-      "  id INT NOT NULL,"
-      "  name VARCHAR(50) NOT NULL,"
-      "  class_number INT,"
-      "  PRIMARY KEY (id),"
-      "  FOREIGN KEY (class_number) REFERENCES class (id)"
-      ");");
-*/
 
 QSqlDatabase connectDB(const char* db_name);
 void createStudentsTables(QSqlDatabase db);
@@ -24,10 +15,10 @@ void createStudentsTables(QSqlDatabase db);
 void add_classroom(QSqlDatabase db, Classroom room);
 std::vector<Classroom> get_classrooms(QSqlDatabase db);
 
-void add_student(QSqlDatabase db, Student student);
+bool add_student(QSqlDatabase db, Student student);
 std::vector<Student> get_students(QSqlDatabase db);
 
-void add_teacher(QSqlDatabase db, Teacher teacher);
+bool add_teacher(QSqlDatabase db, Teacher teacher);
 std::vector<Teacher> get_teachers(QSqlDatabase db);
 
 int main(int argc, char* argv[]) {
@@ -104,7 +95,7 @@ void createStudentsTables(QSqlDatabase db) {
       "  name VARCHAR(50) NOT NULL,"
       "  class_number INT,"
       "  PRIMARY KEY (id),"
-      "  FOREIGN KEY (class_number) REFERENCES class (id)"
+      "  FOREIGN KEY (class_number) REFERENCES classroom (id)"
       ");");
   query.exec(
       "CREATE TABLE IF NOT EXISTS teacher ("
@@ -112,7 +103,7 @@ void createStudentsTables(QSqlDatabase db) {
       "  name VARCHAR(50) NOT NULL,"
       "  class_number INT,"
       "  PRIMARY KEY (id),"
-      "  FOREIGN KEY (class_number) REFERENCES class (id)"
+      "  FOREIGN KEY (class_number) REFERENCES classroom (id)"
       ");");
 
   if (query.lastError().isValid()) {
@@ -134,7 +125,7 @@ void add_classroom(QSqlDatabase db, Classroom room) {
                              db.lastError().text().toStdString());
   }
 }
-void add_teacher(QSqlDatabase db, Teacher teacher) {
+bool add_teacher(QSqlDatabase db, Teacher teacher) {
   QSqlQuery query(db);
 
   std::string queryText =
@@ -145,9 +136,9 @@ void add_teacher(QSqlDatabase db, Teacher teacher) {
   query.exec(QString::fromStdString(queryText));
 
   if (query.lastError().isValid()) {
-    throw std::runtime_error(std::string("add teacher failed") +
-                             db.lastError().text().toStdString());
+    return false;
   }
+  return true;
 }
 
 std::vector<Classroom> get_classrooms(QSqlDatabase db) {
@@ -164,7 +155,7 @@ std::vector<Classroom> get_classrooms(QSqlDatabase db) {
   return rooms;
 }
 
-void add_student(QSqlDatabase db, Student student) {
+bool add_student(QSqlDatabase db, Student student) {
   QSqlQuery query(db);
 
   std::string queryText =
@@ -175,9 +166,9 @@ void add_student(QSqlDatabase db, Student student) {
   query.exec(QString::fromStdString(queryText));
 
   if (query.lastError().isValid()) {
-    throw std::runtime_error(std::string("add student failed") +
-                             db.lastError().text().toStdString());
+    return false;
   }
+  return true;
 }
 std::vector<Student> get_students(QSqlDatabase db) {
   std::vector<Student> students;
