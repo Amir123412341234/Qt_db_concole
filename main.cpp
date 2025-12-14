@@ -1,201 +1,159 @@
-#include <QCoreApplication>
-#include <QDebug>
-#include <QSqlError>
-#include <QSqlQuery>
-#include <QtSql/QSqlDatabase>
+#include <fstream>
 #include <iostream>
-#include "classroom.h"
-#include "student.h"
-#include "teacher.h"
+#include <string>
+#include <vector>
+
 using namespace std;
 
-QSqlDatabase connectDB(const char* db_name);
-void createStudentsTables(QSqlDatabase db);
+struct User {
+  int id;
+  string name;
+  string password;
+  enum Role { Teacher = 1, Student } role;
+};
 
-void add_classroom(QSqlDatabase db, Classroom room);
-std::vector<Classroom> get_classrooms(QSqlDatabase db);
+struct SessionRequest {
+  int id;
+  string subject_name;
+  int author_id;
+  int hour_cost;
+  bool is_active;
+};
 
-bool add_student(QSqlDatabase db, Student student);
-std::vector<Student> get_students(QSqlDatabase db);
+struct Response {
+  int id;
+  string subject_name;
+  int author_id;
+  int request_id;
+};
 
-bool add_teacher(QSqlDatabase db, Teacher teacher);
-std::vector<Teacher> get_teachers(QSqlDatabase db);
+string roleToString(User::Role role) {
+  if (role == User::Role::Teacher) {
+    return "teacher";
+  }
+  return "student";
+}
 
-int main(int argc, char* argv[]) {
-  QCoreApplication a(argc, argv);
+User read(istream& ist) {
+  User user;
+  int role;
+  ist >> user.name >> user.password >> role;
+  while (role < 1 || role > 2) {
+    cout << "Wrong role(need 1 or 2): ";
+    ist >> role;
+  }
+  user.role = (User::Role)role;
+  return user;
+}
 
-  QSqlDatabase students_db = connectDB("students");
-  createStudentsTables(students_db);
+struct IMenu {
+  virtual void show() = 0;
+};
 
-  while (true) {
-    int menuItem;
-    qInfo() << "enter:\n"
-               "\t0 - exit\n"
-               "\t1 - add class\n"
-               "\t2 - print classes\n"
-               "\t3 - add student\n"
-               "\t4 - show students\n"
-               "\t5 - add teacher\n"
-               "\t6 - show teachers\n"
-               ": ";
-    cin >> menuItem;
+struct StudentMenu : public IMenu {
+  void show() {
+    int item;
+    cout << "enter:\n"
+         << "\t0-leave\n"
+         << "\t1-search rep\n"
+         << "\t2-see otkliks\n"
+         << "\t3-add application\n"
+         << "\t4-choose rep\n: ";
+    cin >> item;
+    if (item == 0) {
+      return;
+    } else if (item == 1) {
+    } else if (item == 2) {
+    } else if (item == 3) {
+    }
+    show();
+  }
+};
 
-    if (0 == menuItem) {
-      break;
-    } else if (1 == menuItem) {
-      Classroom room = readClassroom();
-      add_classroom(students_db, room);
-    } else if (2 == menuItem) {
-      vector<Classroom> rooms = get_classrooms(students_db);
-      printClassrooms(rooms);
-    } else if (3 == menuItem) {
-      Student student;
-      student = readStudent();
-      add_student(students_db, student);
+struct TeacherMenu : public IMenu {
+  void show() {
+    int item;
+    cout << "enter:\n"
+         << "\t0-leave\n"
+         << "\t1-show\n"
+         << "\t2-show otclicks\n"
+         << "\t3-add otclick\n: ";
+    cin >> item;
+    if (item == 0) {
+      return;
+    } else if (item == 1) {
+    } else if (item == 2) {
+    }
+    show();
+  }
+};
 
-    } else if (4 == menuItem) {
-      vector<Student> students = get_students(students_db);
-      printStudents(students);
-    } else if (5 == menuItem) {
-      Teacher teacher = readTeacher();
-      add_teacher(students_db, teacher);
-    } else if (6 == menuItem) {
-      vector<Teacher> teachers = get_teachers(students_db);
-      printTeachers(teachers);
+struct UsersModel {
+  vector<User> users;
+
+  bool checkUser(string login, string password) {
+    bool isFind = false;
+    for (int i = 0; i < users.size(); i++) {
+      if (users[i].name == login && users[i].password == password) {
+        isFind = true;
+        break;
+      }
+    }
+    return isFind;
+  }
+
+  string getRole(string login) {
+    for (int i = 0; i < users.size(); i++) {
+      if (users[i].name == login) {
+        return roleToString(users[i].role);
+      }
+    }
+    throw runtime_error("Can't open file");
+  }
+
+  UsersModel(string filename) {
+    ifstream ifst;
+    ifst.open(filename);
+    if (!ifst) {
+      throw runtime_error("Can't open file");
+    }
+    while (true) {
+      User user = read(ifst);
+      if (!ifst) {
+        break;
+      }
+      users.push_back(user);
     }
   }
+};
 
-  return a.exec();
-}
+struct AuthMenu {
+  void show() {
+    string login;
+    string password;
+    cout << "login:" << endl;
+    cin >> login;
+    cout << "password:" << endl;
+    cin >> password;
 
-QSqlDatabase connectDB(const char* db_name) {
-  QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
-
-  db.setDatabaseName(db_name);
-  bool ok = db.open();
-
-  if (ok == false) {
-    throw std::runtime_error("connection error");
+    if (m_model.checkUser(login, password) == false) {
+      cout << "no User";
+    } else {
+      if (m_model.getRole(login) == "student") {
+        StudentMenu menu;
+        menu.show();
+      } else {
+        TeacherMenu menu;
+        menu.show();
+      }
+    }
   }
-  return db;
-}
+  AuthMenu(UsersModel model) : m_model(model) {}
+  UsersModel& m_model;
+};
 
-void createStudentsTables(QSqlDatabase db) {
-  QSqlQuery query(db);
-  query.exec("PRAGMA foreign_keys = ON");
-  query.exec(
-      "CREATE TABLE IF NOT EXISTS classroom ("
-      "  id INT NOT NULL,"
-      "  name VARCHAR(50) NOT NULL,"
-      "  PRIMARY KEY (id)"
-      ");");
-  query.exec(
-      "CREATE TABLE IF NOT EXISTS student ("
-      "  id INT NOT NULL,"
-      "  name VARCHAR(50) NOT NULL,"
-      "  class_number INT,"
-      "  PRIMARY KEY (id),"
-      "  FOREIGN KEY (class_number) REFERENCES classroom (id)"
-      ");");
-  query.exec(
-      "CREATE TABLE IF NOT EXISTS teacher ("
-      "  id INT NOT NULL,"
-      "  name VARCHAR(50) NOT NULL,"
-      "  class_number INT,"
-      "  PRIMARY KEY (id),"
-      "  FOREIGN KEY (class_number) REFERENCES classroom (id)"
-      ");");
-
-  if (query.lastError().isValid()) {
-    throw std::runtime_error(std::string("Create database failed") +
-                             db.lastError().text().toStdString());
-  }
-}
-
-void add_classroom(QSqlDatabase db, Classroom room) {
-  QSqlQuery query(db);
-
-  std::string queryText = "INSERT INTO classroom (id, name) VALUES(";
-  queryText += std::to_string(room.id) + ", \"" + room.name + "\");";
-
-  query.exec(QString::fromStdString(queryText));
-
-  if (query.lastError().isValid()) {
-    throw std::runtime_error(std::string("add classroom failed") +
-                             db.lastError().text().toStdString());
-  }
-}
-bool add_teacher(QSqlDatabase db, Teacher teacher) {
-  QSqlQuery query(db);
-
-  std::string queryText =
-      "INSERT INTO teacher (id, name, class_number) VALUES(";
-  queryText += std::to_string(teacher.id) + ", \"" + teacher.name + "\", " +
-               std::to_string(teacher.class_number) + ");";
-
-  query.exec(QString::fromStdString(queryText));
-
-  if (query.lastError().isValid()) {
-    return false;
-  }
-  return true;
-}
-
-std::vector<Classroom> get_classrooms(QSqlDatabase db) {
-  std::vector<Classroom> rooms;
-  QSqlQuery query(db);
-  query.exec("SELECT id, name FROM classroom WHERE id > 0");
-
-  while (query.next()) {
-    Classroom room;
-    room.id = query.value(0).toString().toInt();
-    room.name = query.value(1).toString().toStdString();
-    rooms.push_back(room);
-  }
-  return rooms;
-}
-
-bool add_student(QSqlDatabase db, Student student) {
-  QSqlQuery query(db);
-
-  std::string queryText =
-      "INSERT INTO student (id, name, class_number) VALUES(";
-  queryText += std::to_string(student.id) + ", \"" + student.name + "\", " +
-               std::to_string(student.class_number) + ");";
-
-  query.exec(QString::fromStdString(queryText));
-
-  if (query.lastError().isValid()) {
-    return false;
-  }
-  return true;
-}
-std::vector<Student> get_students(QSqlDatabase db) {
-  std::vector<Student> students;
-  QSqlQuery query(db);
-  query.exec("SELECT id, name, class_number FROM student");
-
-  while (query.next()) {
-    Student student;
-    student.id = query.value(0).toString().toInt();
-    student.name = query.value(1).toString().toStdString();
-    student.class_number = query.value(2).toString().toInt();
-    students.push_back(student);
-  }
-  return students;
-}
-
-std::vector<Teacher> get_teachers(QSqlDatabase db) {
-  std::vector<Teacher> teachers;
-  QSqlQuery query(db);
-  query.exec("SELECT id, name, class_number FROM teacher");
-
-  while (query.next()) {
-    Teacher teacher;
-    teacher.id = query.value(0).toString().toInt();
-    teacher.name = query.value(1).toString().toStdString();
-    teacher.class_number = query.value(2).toString().toInt();
-    teachers.push_back(teacher);
-  }
-  return teachers;
+int main(int argc, char* argv[]) {
+  UsersModel model("users.txt");
+  AuthMenu menu(model);
+  menu.show();
 }
