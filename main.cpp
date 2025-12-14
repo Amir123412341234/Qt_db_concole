@@ -1,7 +1,10 @@
+#include <QtWidgets/QApplication>
+#include <QtWidgets/QWidget>
 #include <fstream>
 #include <iostream>
 #include <string>
 #include <vector>
+#include "authform.h"
 
 using namespace std;
 
@@ -152,8 +155,14 @@ struct AuthMenu {
   UsersModel& m_model;
 };
 
-int main(int argc, char* argv[]) {
+/*int main(int argc, char* argv[]) {
   UsersModel model("users.txt");
   AuthMenu menu(model);
   menu.show();
+}*/
+int main(int argc, char* argv[]) {
+  QApplication app(argc, argv);
+  AuthForm w;
+  w.show();
+  app.exec();
 }
