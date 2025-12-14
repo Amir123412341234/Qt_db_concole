@@ -1,0 +1,40 @@
+use new_schema;
+/*drop table response;
+drop table session_request;
+drop table user;*/
+CREATE TABLE if not exists user (
+    id int primary key auto_increment,
+    name varchar(50) unique,
+    password  varchar(50),
+    role ENUM('Teacher', 'Student') NOT NULL
+);
+
+CREATE TABLE if not exists session_request (
+    id int primary key auto_increment,
+    subject_name varchar(50),
+    author_id int,
+    hour_cost int,
+    is_active bool,
+    foreign key(author_id) references user(id)
+);
+
+CREATE TABLE if not exists response (
+    id int primary key auto_increment,
+    subject_name varchar(50),
+    author_id int,
+    request_id int,
+    foreign key(author_id) references user(id),
+    foreign key(request_id) references session_request(id)
+);
+
+ALTER TABLE response ADD UNIQUE (author_id, request_id);
+
+/*insert into user(name, password, role) values ("Vika","123", 'Teacher');
+insert into user(name, password, role) values ("Sasha","123", 'Student');
+insert into user(name, password, role) values ("Petr","123", 'Student');
+insert into user(name, password, role) values ("Vasia","123", 'Student');
+insert into session_request(subject_name, author_id, hour_cost, is_active) values ("Math", 2, 700, True);
+insert into session_request(subject_name, author_id, hour_cost, is_active) values ("English", 3, 700, True);*/
+-- select * from session_request where is_active = true;
+insert into response(subject_name, author_id, request_id) values ("English", 1, 1);
+select * from response;
